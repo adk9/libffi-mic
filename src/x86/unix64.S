@@ -3,6 +3,8 @@
 	    - Copyright (c) 2008  Red Hat, Inc
 	    - Copyright (c) 2002  Bo Thorsen <bo@suse.de>
 
+   Port for Intel MIC by Abhishek Kulkarni.
+
    x86-64 Foreign Function Interface 
 
    Permission is hereby granted, free of charge, to any person obtaining
@@ -63,7 +65,7 @@
 #if defined(__clang__) || defined(__APPLE__) || (defined (__sun__) && defined(__svr4__))
 # define E(BASE, X)	.balign 8
 #else
-# define E(BASE, X)	.balign 8; .org BASE + X * 8
+# define E(BASE, X)	.balign 8//; .org BASE + X * 8
 #endif
 
 /* ffi_call_unix64 (void *args, unsigned long bytes, unsigned flags,
@@ -175,10 +177,10 @@ E(L(store_table), UNIX64_RET_INT64)
 	movq	%rax, (%rdi)
 	ret
 E(L(store_table), UNIX64_RET_XMM32)
-	movd	%xmm0, (%rdi)
+	vmovaps	%zmm0, (%rdi)
 	ret
 E(L(store_table), UNIX64_RET_XMM64)
-	movq	%xmm0, (%rdi)
+	vmovapd	%zmm0, (%rdi)
 	ret
 E(L(store_table), UNIX64_RET_X87)
 	fstpt	(%rdi)
@@ -191,10 +193,10 @@ E(L(store_table), UNIX64_RET_ST_XMM0_RAX)
 	movq	%rax, 8(%rsi)
 	jmp	L(s3)
 E(L(store_table), UNIX64_RET_ST_RAX_XMM0)
-	movq	%xmm0, 8(%rsi)
+	vmovapd	%zmm0, 8(%rsi)
 	jmp	L(s2)
 E(L(store_table), UNIX64_RET_ST_XMM0_XMM1)
-	movq	%xmm1, 8(%rsi)
+	vmovapd	%zmm1, 8(%rsi)
 	jmp	L(s3)
 E(L(store_table), UNIX64_RET_ST_RAX_RDX)
 	movq	%rdx, 8(%rsi)
@@ -205,7 +207,7 @@ L(s2):
 	ret
 	.balign 8
 L(s3):
-	movq	%xmm0, (%rsi)
+	vmovapd	%zmm0, (%rsi)
 	shrl	$UNIX64_SIZE_SHIFT, %ecx
 	rep movsb
 	ret
@@ -219,14 +221,14 @@ L(sa):	call	PLT(C(abort))
 L(UW3):
 	/* cfi_restore_state */
 L(load_sse):
-	movdqa	0x30(%r10), %xmm0
-	movdqa	0x40(%r10), %xmm1
-	movdqa	0x50(%r10), %xmm2
-	movdqa	0x60(%r10), %xmm3
-	movdqa	0x70(%r10), %xmm4
-	movdqa	0x80(%r10), %xmm5
-	movdqa	0x90(%r10), %xmm6
-	movdqa	0xa0(%r10), %xmm7
+	vmovdqa64	0x30(%r10),  %zmm0
+	vmovdqa64	0x70(%r10),  %zmm1
+	vmovdqa64	0xb0(%r10),  %zmm2
+	vmovdqa64	0xf0(%r10),  %zmm3
+	vmovdqa64	0x130(%r10), %zmm4
+	vmovdqa64	0x170(%r10), %zmm5
+	vmovdqa64	0x1b0(%r10), %zmm6
+	vmovdqa64	0x1f0(%r10), %zmm7
 	jmp	L(ret_from_load_sse)
 
 L(UW4):
@@ -252,14 +254,14 @@ L(UW5):
 L(UW6):
 	/* cfi_adjust_cfa_offset(ffi_closure_FS) */
 
-	movdqa	%xmm0, ffi_closure_OFS_V+0x00(%rsp)
-	movdqa	%xmm1, ffi_closure_OFS_V+0x10(%rsp)
-	movdqa	%xmm2, ffi_closure_OFS_V+0x20(%rsp)
-	movdqa	%xmm3, ffi_closure_OFS_V+0x30(%rsp)
-	movdqa	%xmm4, ffi_closure_OFS_V+0x40(%rsp)
-	movdqa	%xmm5, ffi_closure_OFS_V+0x50(%rsp)
-	movdqa	%xmm6, ffi_closure_OFS_V+0x60(%rsp)
-	movdqa	%xmm7, ffi_closure_OFS_V+0x70(%rsp)
+	vmovdqa64	%zmm0, ffi_closure_OFS_V+0x00(%rsp)
+	vmovdqa64	%zmm1, ffi_closure_OFS_V+0x40(%rsp)
+	vmovdqa64	%zmm2, ffi_closure_OFS_V+0x80(%rsp)
+	vmovdqa64	%zmm3, ffi_closure_OFS_V+0xC0(%rsp)
+	vmovdqa64	%zmm4, ffi_closure_OFS_V+0x100(%rsp)
+	vmovdqa64	%zmm5, ffi_closure_OFS_V+0x140(%rsp)
+	vmovdqa64	%zmm6, ffi_closure_OFS_V+0x180(%rsp)
+	vmovdqa64	%zmm7, ffi_closure_OFS_V+0x1C0(%rsp)
 	jmp	L(sse_entry1)
 
 L(UW7):
@@ -337,10 +339,10 @@ E(L(load_table), UNIX64_RET_INT64)
 	movq	(%rsi), %rax
 	ret
 E(L(load_table), UNIX64_RET_XMM32)
-	movd	(%rsi), %xmm0
+	vmovaps	(%rsi), %zmm0
 	ret
 E(L(load_table), UNIX64_RET_XMM64)
-	movq	(%rsi), %xmm0
+	vmovapd	(%rsi), %zmm0
 	ret
 E(L(load_table), UNIX64_RET_X87)
 	fldt	(%rsi)
@@ -353,10 +355,10 @@ E(L(load_table), UNIX64_RET_ST_XMM0_RAX)
 	movq	8(%rsi), %rax
 	jmp	L(l3)
 E(L(load_table), UNIX64_RET_ST_RAX_XMM0)
-	movq	8(%rsi), %xmm0
+	vmovapd	8(%rsi), %zmm0
 	jmp	L(l2)
 E(L(load_table), UNIX64_RET_ST_XMM0_XMM1)
-	movq	8(%rsi), %xmm1
+	vmovapd	8(%rsi), %zmm1
 	jmp	L(l3)
 E(L(load_table), UNIX64_RET_ST_RAX_RDX)
 	movq	8(%rsi), %rdx
@@ -365,7 +367,7 @@ L(l2):
 	ret
 	.balign	8
 L(l3):
-	movq	(%rsi), %xmm0
+	vmovapd	(%rsi), %zmm0
 	ret
 
 L(la):	call	PLT(C(abort))
@@ -383,14 +385,14 @@ L(UW12):
 L(UW13):
 	/* cfi_adjust_cfa_offset(ffi_closure_FS) */
 
-	movdqa	%xmm0, ffi_closure_OFS_V+0x00(%rsp)
-	movdqa	%xmm1, ffi_closure_OFS_V+0x10(%rsp)
-	movdqa	%xmm2, ffi_closure_OFS_V+0x20(%rsp)
-	movdqa	%xmm3, ffi_closure_OFS_V+0x30(%rsp)
-	movdqa	%xmm4, ffi_closure_OFS_V+0x40(%rsp)
-	movdqa	%xmm5, ffi_closure_OFS_V+0x50(%rsp)
-	movdqa	%xmm6, ffi_closure_OFS_V+0x60(%rsp)
-	movdqa	%xmm7, ffi_closure_OFS_V+0x70(%rsp)
+	vmovdqa64	%zmm0, ffi_closure_OFS_V+0x00(%rsp)
+	vmovdqa64	%zmm1, ffi_closure_OFS_V+0x40(%rsp)
+	vmovdqa64	%zmm2, ffi_closure_OFS_V+0x80(%rsp)
+	vmovdqa64	%zmm3, ffi_closure_OFS_V+0xC0(%rsp)
+	vmovdqa64	%zmm4, ffi_closure_OFS_V+0x100(%rsp)
+	vmovdqa64	%zmm5, ffi_closure_OFS_V+0x140(%rsp)
+	vmovdqa64	%zmm6, ffi_closure_OFS_V+0x180(%rsp)
+	vmovdqa64	%zmm7, ffi_closure_OFS_V+0x1C0(%rsp)
 	jmp	L(sse_entry2)
 
 L(UW14):
